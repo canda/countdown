@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { encodeMessage, decodeMessage, toInstant, createLink, parseLink, remaining } from '../src/core.js';
+test('Unicode and multiline messages round trip', () => { const msg = '¡Sorpresa! 🎉\n日本語 <script>alert(1)</script>'; assert.equal(decodeMessage(encodeMessage(msg)), msg); });
+test('Timezone conversion and fractional offsets', () => { assert.equal(toInstant('2030-01-01', '12:00', 'America/Argentina/Buenos_Aires'), '2030-01-01T15:00:00Z'); assert.equal(toInstant('2030-01-01','12:00','Asia/Kathmandu'), '2030-01-01T06:15:00Z'); });
+test('Reject DST gaps and ambiguous times', () => { for (const date of ['2030-03-10','2030-11-03']) assert.throws(() => toInstant(date,date.endsWith('10') ? '02:30' : '01:30','America/New_York')); });
+test('Share links preserve path, instant, message and theme', () => { const url = new URL(createLink('https://canda.github.io/countdown/', {date:'2030-01-01',time:'12:00',timezone:'UTC',message:'Hola 💚',theme:'sage'},0)); assert.equal(url.pathname,'/countdown/countdown.html'); assert.equal(parseLink(url.search).message,'Hola 💚'); assert.equal(parseLink(url.search).theme,'sage'); });
+test('Reject invalid, empty, overlong and past inputs', () => { const data = {date:'2020-01-01',time:'12:00',timezone:'UTC',message:'Hola',theme:'paper'}; assert.throws(() => createLink('https://example.com',data)); assert.throws(() => decodeMessage('%%%')); assert.throws(() => decodeMessage(encodeMessage(' '))); assert.throws(() => decodeMessage(encodeMessage('a'.repeat(1501)))); assert.throws(() => parseLink('?at=nope')); assert.throws(() => toInstant('2030-02-30','12:00','UTC')); });
+test('Countdown rounds upward, splits days and clamps at zero', () => { assert.deepEqual(remaining(90061000,0),{days:1,hours:1,minutes:1,seconds:1}); assert.equal(remaining(1,0).seconds,1); assert.deepEqual(remaining(0,1),{days:0,hours:0,minutes:0,seconds:0}); });
